@@ -228,7 +228,7 @@ bool AsyncClient::connect(IPAddress ip, uint16_t port)
   }
 
   ip_addr_t addr;
-  addr.addr = ip;
+  ip_addr_set_ip4_u32(&addr, (uint32_t) ip);
 
 #if LWIP_VERSION_MAJOR == 1
   netif* interface = ip_route(&addr);
@@ -285,12 +285,12 @@ bool AsyncClient::connect(const char* host, uint16_t port)
   {
     bool returnValue;
 #if ASYNC_TCP_SSL_ENABLED
-    returnValue = connect(IPAddress(addr.addr), port, secure);
+    returnValue = connect(IPAddress(ip_addr_get_ip4_u32(&addr)), port, secure);
 #else
-    returnValue = connect(IPAddress(addr.addr), port);
+    returnValue = connect(IPAddress(ip_addr_get_ip4_u32(&addr)), port);
 #endif
 
-    ATCP_LOGDEBUG3("connect: dns_gethostbyname => IP =", IPAddress(addr.addr), ", returnValue = ", returnValue ? "TRUE" : "FALSE");
+    ATCP_LOGDEBUG3("connect: dns_gethostbyname => IP =", IPAddress(ip_addr_get_ip4_u32(&addr)), ", returnValue = ", returnValue ? "TRUE" : "FALSE");
 
     return returnValue;
   }
@@ -365,7 +365,7 @@ AsyncClient& AsyncClient::operator=(const AsyncClient& other)
 
 bool AsyncClient::operator==(const AsyncClient &other) const 
 {
-  return (_pcb != NULL && other._pcb != NULL && (_pcb->remote_ip.addr == other._pcb->remote_ip.addr) &&
+  return (_pcb != NULL && other._pcb != NULL && ip_addr_cmp(&_pcb->remote_ip, &other._pcb->remote_ip) &&
          (_pcb->remote_port == other._pcb->remote_port));
 }
 
@@ -922,9 +922,9 @@ void AsyncClient::_dns_found(ip_addr_t *p)
   if (p)
   {
 #if ASYNC_TCP_SSL_ENABLED
-    connect(IPAddress(ipaddr->addr), _connect_port, _pcb_secure);
+    connect(IPAddress(ip_addr_get_ip4_u32(p)), _connect_port, _pcb_secure);
 #else
-    connect(IPAddress(p->addr), _connect_port);
+    connect(IPAddress(ip_addr_get_ip4_u32(p)), _connect_port);
 #endif
   }
   else
@@ -1133,7 +1133,7 @@ uint32_t AsyncClient::getRemoteAddress() const
   if (!_pcb)
     return 0;
 
-  return _pcb->remote_ip.addr;
+  return ip_addr_get_ip4_u32(&_pcb->remote_ip);
 }
 
 /////////////////////////////////////////////////
@@ -1153,7 +1153,7 @@ uint32_t AsyncClient::getLocalAddress() const
   if (!_pcb)
     return 0;
 
-  return _pcb->local_ip.addr;
+  return ip_addr_get_ip4_u32(&_pcb->local_ip);
 }
 
 /////////////////////////////////////////////////
@@ -1618,7 +1618,7 @@ void AsyncServer::begin()
   tcp_setprio(_pcb, TCP_PRIO_NORMAL);
 
   ip_addr_t local_addr;
-  local_addr.addr = (uint32_t) _addr;
+  ip_addr_set_ip4_u32(&local_addr, (uint32_t) _addr);
   err = tcp_bind(pcb, &local_addr, _port);
 
   // Failures are ERR_ISCONN or ERR_USE
